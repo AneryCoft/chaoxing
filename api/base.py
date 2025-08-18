@@ -225,15 +225,12 @@ class Chaoxing:
             )
             resp = _session.get(_url)
             if resp.status_code == 200:
-                _success = True
-                break  # 如果返回为200正常, 则跳出循环
+                if resp.json():
+                    return resp.json()["isPassed"], 200 # 如果返回为200正常, 则跳出循环
             elif resp.status_code == 403:
                 continue  # 如果出现403无权限报错, 则继续尝试不同的rt参数
-        if _success:
-            if resp.json():
-                return resp.json()["isPassed"], 200
             else:
-                return True, 200
+                return False, resp.status_code
         else:
             # 若出现两个rt参数都返回403的情况, 则跳过当前任务
             logger.warning("出现403报错, 尝试修复无效, 正在跳过当前任务点...")
@@ -276,8 +273,12 @@ class Chaoxing:
                 
                 if _isPassed:
                     break
-                if not _isPassed and state == 403:
-                    return self.StudyResult.FORBIDDEN
+                if not _isPassed:
+                    if state == 403:
+                        return self.StudyResult.FORBIDDEN
+                    else:
+                        logger.warning(f"出现错误: {state}")
+                        return self.StudyResult.ERROR
                 
                 _isPassed, state = self.video_progress_log(*params, _playingTime)
                 
