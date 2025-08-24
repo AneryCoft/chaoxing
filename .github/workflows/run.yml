@@ -25,4 +25,5 @@ jobs:
         env: 
           PHONE: ${{ secrets.PHONE }}
           PASSWORD: ${{ secrets.PASSWORD }}
+          COURSE_LIST: ${{ secrets.COURSE_LIST }}
           # Settings-Security-Secrets and variables-Actions-Repository secrets
