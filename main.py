@@ -386,7 +386,10 @@ def main():
         all_course = chaoxing.get_course_list()
         
         # 过滤要学习的课程
-        course_task = filter_courses(all_course, common_config.get("course_list"))
+        course_list = os.getenv("COURSE_LIST")
+        if not course_list:
+            course_list = common_config.get("course_list")
+        course_task = filter_courses(all_course, course_list)
         
         # 开始学习
         logger.info(f"课程列表过滤完毕, 当前课程任务数量: {len(course_task)}")
