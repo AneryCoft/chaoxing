@@ -58,10 +58,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_config_from_file(config_path):
+def load_config_from_file(config_path, config_string:str):
     """从配置文件加载设置"""
     config = configparser.ConfigParser()
-    config.read(config_path, encoding="utf8")
+    if config_string:
+        config.read_string(config_string)
+    else:
+        config.read(config_path, encoding="utf8")
     
     common_config = {}
     tiku_config = {}
@@ -109,6 +112,10 @@ def build_config_from_args(args):
 
 def init_config():
     """初始化配置"""
+    config = os.getenv("CONFIG")
+    if config:
+        return load_config_from_file(config_string=config)
+
     args = parse_args()
     
     if args.config:
@@ -140,9 +147,6 @@ class RollBackManager:
 def init_chaoxing(common_config, tiku_config):
     """初始化超星实例"""
     # 从环境中读取用户名与密码
-    username = os.getenv("PHONE")
-    password = os.getenv("PASSWORD")
-
     if not username or not password:
         username = common_config.get("username", "")
         password = common_config.get("password", "")
@@ -386,10 +390,7 @@ def main():
         all_course = chaoxing.get_course_list()
         
         # 过滤要学习的课程
-        course_list = os.getenv("COURSE_LIST")
-        if not course_list:
-            course_list = common_config.get("course_list")
-        course_task = filter_courses(all_course, course_list)
+        course_task = filter_courses(all_course, common_config.get("course_list"))
         
         # 开始学习
         logger.info(f"课程列表过滤完毕, 当前课程任务数量: {len(course_task)}")

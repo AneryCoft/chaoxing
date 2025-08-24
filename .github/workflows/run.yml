@@ -23,7 +23,5 @@ jobs:
       - name: Run script
         run: python main.py
         env: 
-          PHONE: ${{ secrets.PHONE }}
-          PASSWORD: ${{ secrets.PASSWORD }}
-          COURSE_LIST: ${{ secrets.COURSE_LIST }}
+          CONFIG: ${{ secrets.CONFIG }}
           # Settings-Security-Secrets and variables-Actions-Repository secrets
