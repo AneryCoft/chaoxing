@@ -252,57 +252,71 @@ class Chaoxing:
             # _key = _video_info["key"]
 
             _isPassed = False
-            _isFinished = False
             _playingTime = 0
-            logger.info(f"开始任务: {_job['name']}, 总时长: {_duration}秒")
-            state = 200
 
-            _interactive_quiz = self.get_interactive_quiz(_course, _job)
-            if _interactive_quiz:
+            _interactive_quiz_list = self.get_interactive_quiz(_course, _job)
+            _quiz_params_list = []
+            for _interactive_quiz in _interactive_quiz_list:
                 _eventid = _interactive_quiz["resourceId"]
                 _memberinfo = _interactive_quiz["memberinfo"]
                 _quiz_options:list = _interactive_quiz["options"]
-                _startTime = _interactive_quiz["startTime"]
-            
-            params = (_session, _course, _job, _dtoken, _type, _duration)
-            _isPassed, state = self.video_progress_log(*params, _playingTime, self.VideoState.START)
+                _startTime = int(_interactive_quiz["startTime"])
+                _question_type = _interactive_quiz["questionType"]
 
-            while not _isFinished:
-                if _isFinished:
-                    _playingTime = _duration
+                _quiz_params = (_course, _job, _eventid, _memberinfo, _quiz_options, _question_type)
+                _quiz_params_list.append((_startTime, _quiz_params))
+            
+            task_list = []
+            time = 0
+            while time < _duration:
+                _wait_time = random.randint(30, 90)
+                time += _wait_time
+                if _quiz_params_list:
+                    _quiz_params = _quiz_params_list[0]
+                    if time >= _quiz_params[0]:
+                        task_list.append(_quiz_params)
+                        _quiz_params_list.pop(0)
+                if time < _duration:
+                    task_list.append(time)    
+            
+            logger.info(f"开始任务: {_job['name']}, 总时长: {_duration}秒")
+            state = 200
+
+            params = (_session, _course, _job, _dtoken, _type, _duration)
+
+            _isPassed, state = self.video_progress_log(*params, 0, self.VideoState.START)
+
+            for task in task_list:
+                _task_time = 0
+                task_type = type(task) is int
+
+                _task_time = task if task_type else task[0]
+                
+                show_progress(_job["name"], _playingTime, _task_time, _duration, _speed)
+
+                _playingTime = _task_time
+
+                if task_type:
+                    _isPassed, state = self.video_progress_log(*params, _playingTime)
+                else:
+                    self.video_progress_log(*params, _playingTime, self.VideoState.PAUSE)
+                    self.do_interactive_quiz(*task[1])
+                    self.video_progress_log(*params, _playingTime, self.VideoState.START)
                 
                 if _isPassed:
                     break
-                if not _isPassed:
+                else:
                     if state == 403:
                         return self.StudyResult.FORBIDDEN
-                    else:
+                    elif state != 200:
                         logger.warning(f"出现错误: {state}")
                         return self.StudyResult.ERROR
-                
-                _isPassed, state = self.video_progress_log(*params, _playingTime)
-                
-                if _interactive_quiz and _playingTime >= _startTime:
-                    self.video_progress_log(*params, _playingTime, self.VideoState.PAUSE)
-                    self.do_interactive_quiz(_course, _job, _eventid, _memberinfo, _quiz_options)
-                    _interactive_quiz = None
-                    self.video_progress_log(
-                        *params,
-                        _playingTime,
-                        self.VideoState.START
-                    )
-
-                _wait_time = random.randint(30, 90)
-                if _playingTime + _wait_time >= _duration:
-                    _wait_time = _duration - _playingTime
-                    _isPassed, state = self.video_progress_log(*params, _duration, self.VideoState.END)
-                    if not _isPassed:
-                        _isPassed, state = self.video_progress_log(*params, 0, self.VideoState.START)
-                        # 部分视频播放结束后依然未显示通过
-                    _isFinished = True
-                # 播放进度条
-                show_progress(_job["name"], _playingTime, _wait_time, _duration, _speed)
-                _playingTime += _wait_time
+            
+            if not _isPassed:
+                _isPassed, state = self.video_progress_log(*params, _duration, self.VideoState.END)
+                if not _isPassed:
+                    _isPassed, state = self.video_progress_log(*params, 0, self.VideoState.START)
+                    # 部分视频播放结束后依然未显示通过
             
             print("\r", end="", flush=True)
             logger.info(f"任务完成: {_job['name']}")
@@ -310,8 +324,8 @@ class Chaoxing:
         else:
             return self.StudyResult.ERROR
     
-    def get_interactive_quiz(self, _course, card):
-        logger.trace("开始获取互动测验内容...")
+    def get_interactive_quiz(self, _course, card) -> list | None:
+        # logger.trace("开始获取互动测验内容...")
         _session = init_session(isVideo = True)
         _url = (
             f"https://mooc1.chaoxing.com/mooc-ans/richvideo/initdatawithviewerV2?"
@@ -325,11 +339,13 @@ class Chaoxing:
 
         if _resp.status_code == 200:
             if _resp.json():
-                return _resp.json()[0]["datas"][0]
+                interactive_quiz_list = [item["datas"][0] for item in _resp.json()]
+
+                return interactive_quiz_list
             else:
                 logger.info("未获取到互动测验内容")
     
-    def do_interactive_quiz(self, _course, _job, eventid, memberinfo, quiz_options):
+    def do_interactive_quiz(self, _course, _job, eventid, memberinfo, quiz_options, question_type):
         _session = init_session()
         _url = (
             f"https://mooc1.chaoxing.com/mooc-ans/question/quiz-rightcount?"
@@ -343,23 +359,30 @@ class Chaoxing:
         # 开始答题
         if _start_response.status_code != 200:
             return
+        
+        _url = "https://mooc1.chaoxing.com/mooc-ans/question/quiz-validation"
+        params = {
+            "classid": _course["clazzId"],
+            "cpi": _course["cpi"],
+            "objectid": _job["objectid"],
+            "_dc": get_timestamp(),
+            "eventid": eventid,
+            "memberinfo": memberinfo
+        }
+        if question_type == "多选题":
+            params["answerContent"] = ",".join([option["name"] for option in quiz_options])
+            # 全选
+            _session.get(_url, params=params)
 
-        for option in quiz_options:
-            _url = (
-                f"https://mooc1.chaoxing.com/mooc-ans/question/quiz-validation?"
-                f"classid={_course['clazzId']}&"
-                f"cpi={_course["cpi"]}&"
-                f"objectid={_job["objectid"]}&"
-                f"_dc={get_timestamp()}&"
-                f"eventid={eventid}&"
-                f"memberinfo={memberinfo}&"
-                f"answerContent={option["name"]}"
-            )
-            _submit_response = _session.get(_url)
-            # 提交答案
+            # 多选题难解
+        else:
+            for option in quiz_options:
+                params["answerContent"] = option["name"]
+                _submit_response = _session.get(_url, params=params)
+                # 提交答案
 
-            if _submit_response.json()["isRight"]:
-                break
+                if _submit_response.json()["isRight"]:
+                    break
         # 猜答案
 
     def study_document(self, _course, _job) -> StudyResult:

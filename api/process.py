@@ -1,30 +1,10 @@
 import time
-from typing import Union
+from datetime import timedelta
 from api.config import GlobalConst as gc
 
 
-def sec2time(seconds: int) -> str:
-    """
-    将秒数转换为时分秒格式的字符串。
-    
-    Args:
-        seconds: 要转换的秒数
-        
-    Returns:
-        格式化的时间字符串，格式为 "h:mm:ss" 或 "mm:ss"，如果秒数为0则返回"--:--"
-    """
-    hours = int(seconds / 3600)
-    minutes = int(seconds % 3600 / 60)
-    secs = int(seconds % 60)
-    
-    if hours > 0:
-        return f"{hours}:{minutes:02}:{secs:02}"
-    if seconds > 0:
-        return f"{minutes:02}:{secs:02}"
-    return "--:--"
 
-
-def show_progress(task_name: str, start_position: int, duration: int, 
+def show_progress(task_name: str, start_position: int, end_position: int, 
                  total_length: int, speed: float) -> None:
     """
     显示任务进度条，模拟任务进度。
@@ -32,7 +12,7 @@ def show_progress(task_name: str, start_position: int, duration: int,
     Args:
         task_name: 当前执行的任务名称
         start_position: 起始位置（以秒为单位）
-        duration: 任务持续时间（以秒为单位）
+        end_position: 结束位置（以秒为单位）
         total_length: 任务总长度（以秒为单位）
         speed: 任务执行速度
         
@@ -40,6 +20,7 @@ def show_progress(task_name: str, start_position: int, duration: int,
         None
     """
     start_time = time.time()
+    duration = end_position - start_position
     expected_end_time = start_time + (duration / speed)
     
     while time.time() < expected_end_time:
@@ -55,7 +36,7 @@ def show_progress(task_name: str, start_position: int, duration: int,
         # 格式化输出进度信息
         progress_text = (
             f"\r当前任务: {task_name} |{progress_bar}| {percent_complete}%  "
-            f"{sec2time(current_position)}/{sec2time(total_length)}"
+            f"{timedelta(seconds=current_position)}/{timedelta(seconds=total_length)}"
         )
         
         print(progress_text, end="", flush=True)
