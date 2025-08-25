@@ -256,15 +256,16 @@ class Chaoxing:
 
             _interactive_quiz_list = self.get_interactive_quiz(_course, _job)
             _quiz_params_list = []
-            for _interactive_quiz in _interactive_quiz_list:
-                _eventid = _interactive_quiz["resourceId"]
-                _memberinfo = _interactive_quiz["memberinfo"]
-                _quiz_options:list = _interactive_quiz["options"]
-                _startTime = int(_interactive_quiz["startTime"])
-                _question_type = _interactive_quiz["questionType"]
+            if _interactive_quiz_list:
+                for _interactive_quiz in _interactive_quiz_list:
+                    _eventid = _interactive_quiz["resourceId"]
+                    _memberinfo = _interactive_quiz["memberinfo"]
+                    _quiz_options:list = _interactive_quiz["options"]
+                    _startTime = int(_interactive_quiz["startTime"])
+                    _question_type = _interactive_quiz["questionType"]
 
-                _quiz_params = (_course, _job, _eventid, _memberinfo, _quiz_options, _question_type)
-                _quiz_params_list.append((_startTime, _quiz_params))
+                    _quiz_params = (_course, _job, _eventid, _memberinfo, _quiz_options, _question_type)
+                    _quiz_params_list.append((_startTime, _quiz_params))
             
             task_list = []
             time = 0
