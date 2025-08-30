@@ -313,6 +313,8 @@ class Chaoxing:
                         logger.warning(f"出现错误: {state}")
                         return self.StudyResult.ERROR
             
+            show_progress(_job["name"], _playingTime, _duration, _duration, _speed)
+            
             if not _isPassed:
                 _isPassed, state = self.video_progress_log(*params, _duration, self.VideoState.END)
                 if not _isPassed:
