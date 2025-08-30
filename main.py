@@ -58,7 +58,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_config_from_file(config_path, config_string:str):
+def load_config_from_file(config_path='', config_string=''):
     """从配置文件加载设置"""
     config = configparser.ConfigParser()
     if config_string:
