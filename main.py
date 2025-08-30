@@ -146,7 +146,9 @@ class RollBackManager:
 
 def init_chaoxing(common_config, tiku_config):
     """初始化超星实例"""
-    # 从环境中读取用户名与密码
+    username = common_config.get("username", "")
+    password = common_config.get("password", "")
+    
     if not username or not password:
         username = common_config.get("username", "")
         password = common_config.get("password", "")
