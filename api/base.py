@@ -237,8 +237,10 @@ class Chaoxing:
             return False, 403  # 返回一个字典和当前状态
     
     def study_video(
-        self, _course, _job, _job_info, _speed: float = 1.0, _type: str = "Video"
+        self, _course, _job, _job_info, _type: str = "Video"
     ) -> StudyResult:
+        _speed = 2.0 if _job["doublespeed"] else 1.0
+
         if _type == "Video":
             _session = init_session(isVideo=True)
         else:
@@ -347,6 +349,8 @@ class Chaoxing:
                 return interactive_quiz_list
             else:
                 logger.info("未获取到互动测验内容")
+        else:
+            logger.warning(f"获取互动测验内容失败, 状态码: {_resp.status_code}")
     
     def do_interactive_quiz(self, _course, _job, eventid, memberinfo, quiz_options, question_type):
         _session = init_session()
@@ -576,19 +580,8 @@ class Chaoxing:
 
         # 学习通这里根据参数差异能重定向至两个不同接口, 需要定向至https://mooc1.chaoxing.com/mooc-ans/workHandle/handle
         _session = init_session()
-        headers = {
-            "Host": "mooc1.chaoxing.com",
-            "sec-ch-ua": '"Microsoft Edge";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "Upgrade-Insecure-Requests": "1",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Dest": "iframe",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6,ja;q=0.5",
-        }
+        _version = "2024-1212-1629"
+        _session.headers["Referer"] = f"https://mooc1.chaoxing.com/ananas/modules/work/index.html?v={_version}&castscreen=0"
         cookies = _session.cookies.get_dict()
 
         _url = "https://mooc1.chaoxing.com/mooc-ans/api/work"
@@ -597,7 +590,7 @@ class Chaoxing:
         def fetch_response():
             return requests.get(
                     _url,
-                    headers=headers,
+                    headers=_session.headers,
                     cookies=cookies,
                     verify=False,
                     params={

@@ -35,9 +35,6 @@ def parse_args():
         "-l", "--list", type=str, default=None, help="要学习的课程ID列表, 以 , 分隔"
     )
     parser.add_argument(
-        "-s", "--speed", type=float, default=1.0, help="视频播放倍速 (默认1, 最大2)"
-    )
-    parser.add_argument(
         "-v",
         "--verbose",
         "--debug",
@@ -76,9 +73,6 @@ def load_config_from_file(config_path='', config_string=''):
         # 处理course_list，将字符串转换为列表
         if "course_list" in common_config and common_config["course_list"]:
             common_config["course_list"] = common_config["course_list"].split(",")
-        # 处理speed，将字符串转换为浮点数
-        if "speed" in common_config:
-            common_config["speed"] = float(common_config["speed"])
         # 处理notopen_action，设置默认值为retry
         if "notopen_action" not in common_config:
             common_config["notopen_action"] = "retry"
@@ -104,7 +98,6 @@ def build_config_from_args(args):
         "username": args.username,
         "password": args.password,
         "course_list": args.list.split(",") if args.list else None,
-        "speed": args.speed if args.speed else 1.0,
         "notopen_action": args.notopen_action if args.notopen_action else "retry"
     }
     return common_config, {}, {}
@@ -148,11 +141,6 @@ def init_chaoxing(common_config, tiku_config):
     """初始化超星实例"""
     username = common_config.get("username", "")
     password = common_config.get("password", "")
-    
-    if not username or not password:
-        username = common_config.get("username", "")
-        password = common_config.get("password", "")
-    # 如果环境中没有 从配置中读取
     
     # 如果没有提供用户名密码，从命令行获取
     if not username:
@@ -213,19 +201,19 @@ def handle_not_open_chapter(notopen_action, point, tiku, RB, auto_skip_notopen=F
         return 1  # 继续下一章节
 
 
-def process_job(chaoxing, course, job, job_info, speed):
+def process_job(chaoxing, course, job, job_info):
     """处理单个任务点"""
     # 视频任务
     if job["type"] == "video":
         logger.trace(f"识别到视频任务, 任务章节: {course['title']} 任务ID: {job['jobid']}")
         # 超星的接口没有返回当前任务是否为Audio音频任务
         video_result = chaoxing.study_video(
-            course, job, job_info, _speed=speed, _type="Video"
+            course, job, job_info, _type="Video"
         )
         if chaoxing.StudyResult.is_failure(video_result):
             logger.warning("当前任务非视频任务, 正在尝试音频任务解码")
             video_result = chaoxing.study_video(
-                course, job, job_info, _speed=speed, _type="Audio")
+                course, job, job_info, _type="Audio")
         if chaoxing.StudyResult.is_failure(video_result):
             logger.warning(
                 f"出现异常任务 -> 任务章节: {course['title']} 任务ID: {job['jobid']}, 已跳过"
@@ -244,7 +232,7 @@ def process_job(chaoxing, course, job, job_info, speed):
         chaoxing.strdy_read(course, job, job_info)
 
 
-def process_chapter(chaoxing, course, point, RB, notopen_action, speed, auto_skip_notopen=False):
+def process_chapter(chaoxing, course, point, RB, notopen_action, auto_skip_notopen=False):
     """处理单个章节"""
     logger.info(f'当前章节: {point["title"]}')
     
@@ -296,12 +284,12 @@ def process_chapter(chaoxing, course, point, RB, notopen_action, speed, auto_ski
     
     # 遍历所有任务点
     for job in jobs:
-        process_job(chaoxing, course, job, job_info, speed)
+        process_job(chaoxing, course, job, job_info)
     
     return 1, auto_skip_notopen  # 继续下一章节
 
 
-def process_course(chaoxing, course, notopen_action, speed):
+def process_course(chaoxing, course, notopen_action):
     """处理单个课程"""
     logger.info(f"开始学习课程: {course['title']}")
     
@@ -322,7 +310,7 @@ def process_course(chaoxing, course, notopen_action, speed):
         logger.debug(f"当前章节 __point_index: {__point_index}")
         
         result, auto_skip_notopen = process_chapter(
-            chaoxing, course, point, RB, notopen_action, speed, auto_skip_notopen
+            chaoxing, course, point, RB, notopen_action, auto_skip_notopen
         )
         
         if result == -1:  # 退出当前课程
@@ -370,8 +358,6 @@ def main():
         # 初始化配置
         common_config, tiku_config, notification_config = init_config()
         
-        # 规范化播放速度
-        speed = min(2.0, max(1.0, common_config.get("speed", 1.0)))
         notopen_action = common_config.get("notopen_action", "retry")
         
         # 初始化超星实例
@@ -397,7 +383,7 @@ def main():
         # 开始学习
         logger.info(f"课程列表过滤完毕, 当前课程任务数量: {len(course_task)}")
         for course in course_task:
-            process_course(chaoxing, course, notopen_action, speed)
+            process_course(chaoxing, course, notopen_action)
         
         logger.info("所有课程学习任务已完成")
         notification.send("chaoxing : 所有课程学习任务已完成")
