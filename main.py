@@ -8,6 +8,7 @@ import time
 import traceback
 from urllib3 import disable_warnings, exceptions
 from questionary import checkbox
+import os
 
 from concurrent.futures.thread import ThreadPoolExecutor
 from dataclasses import dataclass

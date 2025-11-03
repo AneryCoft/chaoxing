@@ -302,6 +302,11 @@ def _process_video_task(card: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             "mid": card["mid"],  # 必须字段，如果不存在会抛出异常
             "objectid": card.get("objectId", ""),
             "aid": card.get("aid", ""),
+            "playTime": card.get("playTime", 0),
+            "rt": video_property.get("rt", ""),
+            "attDuration": card.get("attDuration", ""),
+            "attDurationEnc": card.get("attDurationEnc", ""),
+            "videoFaceCaptureEnc": card.get("videoFaceCaptureEnc", ""),
             "doublespeed": video_property.get("doublespeed", 0)
         }
     except KeyError:
